@@ -1,0 +1,28 @@
+directiveWrapper.template<div id="techRadar" class="container">
+    <div class="row">
+        <div class="span6">
+            <div ng-repeat="control in controls | filter: { initParam: 'false' }" >
+                {{control.name}}:
+                <input slider
+                      radar-control="control"
+                      type="text" class="span2" value=""
+                      data-slider-orientation="horizontal"
+                      data-slider-selection="after"
+                      data-slider-tooltip="hide">
+                {{control.value | number:2}}
+            </div>
+        </div>
+        <div class="span6">
+            <div ng-repeat="control in controls | filter: { initParam: 'true' }">
+                {{control.name}}:
+                <input slider
+                      radar-control="control"
+                      type="text" class="span2" value=""
+                      data-slider-orientation="horizontal"
+                      data-slider-selection="after"
+                      data-slider-tooltip="hide">
+                {{control.value | number:2}}
+            </div>
+        </div>
+    </div>
+</div>

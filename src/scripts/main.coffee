@@ -1,36 +1,35 @@
 require
-	shim:
-		'controllers/gitHubController'       : deps: ['app', 'services/gitHubService']
-		'controllers/personController'       : deps: ['app', 'services/personService']
-		'controllers/personDetailsController': deps: ['app', 'services/personService']
-		'controllers/searchHistoryController': deps: ['app', 'services/messageService']
-		'directives/ngController'            : deps: ['app']
-		'directives/tab'                     : deps: ['app']
-		'directives/tabs'                    : deps: ['app', 'directives/tab']
-		'filters/twitterfy'                  : deps: ['app']
-		'libs/angular-resource'              : deps: ['libs/angular']
-		'responseInterceptors/dispatcher'    : deps: ['app']
-		'services/gitHubService'             : deps: ['app', 'services/messageService']
-		'services/messageService'            : deps: ['app']
-		'services/personService'             : deps: ['app']
-		'app'                                : deps: ['libs/angular', 'libs/angular-resource']
-		'bootstrap'                          : deps: ['app']
-		'routes'                             : deps: ['app']
-		'run'                                : deps: ['app']
-		'views'                              : deps: ['app']
-	[
-		'require'
-		'controllers/gitHubController'
-		'controllers/personController'
-		'controllers/personDetailsController'
-		'controllers/searchHistoryController'
-		'directives/ngController'
-		'directives/tabs'
-		'filters/twitterfy'
-		'responseInterceptors/dispatcher'
-		'routes'
-		'run'
-		'views'
-	], (require) ->
-		angular.element(document).ready ->
-			require ['bootstrap']
+  paths:
+    'bootstrap-slider'  : 'libs/bootstrap-slider'
+    'underscore'        : 'libs/underscore'
+    'jquery'            : 'libs/jquery'
+    'd3'                : 'libs/d3.v3'
+    'twitter-bootstrap' : 'libs/bootstrap'
+    'angular-resource'  : 'libs/angular-resource'
+    'angular'           : 'libs/angular'
+  shim:
+    'angular-resource'                   : deps: ['angular']
+    'twitter-bootstrap'                  : deps: ['jquery']
+    'bootstrap-slider'                   : deps: ['jquery']
+    'directives/ngController'            : deps: ['app']
+    'directives/radar'                   : deps: ['app', 'underscore', 'd3']
+    'directives/slider'                  : deps: ['app', 'bootstrap-slider']
+    'filters/twitterfy'                  : deps: ['app']
+    'responseInterceptors/dispatcher'    : deps: ['app']
+    'bootstrap'                          : deps: ['app']
+    'routes'                             : deps: ['app']
+    'run'                                : deps: ['app']
+    'views'                              : deps: ['app']
+    'app'                                : deps: ['angular', 'angular-resource']
+  [
+    'require'
+    'directives/radar'
+    'directives/slider'
+    'directives/ngController'
+    'responseInterceptors/dispatcher'
+    'routes'
+    'run'
+    'views'
+  ], (require) ->
+    angular.element(document).ready ->
+      require ['bootstrap']
