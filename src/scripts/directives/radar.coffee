@@ -1,4 +1,4 @@
-angular.module('app').directive 'appRadar', ['$log', '$timeout', ($log, $timeout) ->
+angular.module('app').directive 'appRadar', ['$log', '$timeout', 'radarService', ($log, $timeout, radarService) ->
   restrict: 'E'
   templateUrl: '/views/directives/techRadar.html'
   transclude: true
@@ -106,13 +106,9 @@ angular.module('app').directive 'appRadar', ['$log', '$timeout', ($log, $timeout
     radiusSoftener = defineControl("Radius softener", true, false, 1, 1.01, 1.003)
     nodeRadius = defineControl("Node radius", false, true, 1, 30, 8)
 
-
-    getOuterRadiusForSameArea = (commonRadius, innerRadius) ->
-      Math.pow(Math.sqrt(2*commonRadius*commonRadius - innerRadius*innerRadius), radiusSoftener())
-
     defineRing = (ring) ->
       innerR = (if ring==0 then 0 else radii[ring-1].outer)
-      outerR = (if ring==0 then baseWidth() else getOuterRadiusForSameArea(innerR, radii[ring-1].inner))
+      outerR = (if ring==0 then baseWidth() else radarService.getOuterRadiusForSameArea(innerR, radii[ring-1].inner, radiusSoftener()))
       radii.push({inner: innerR, outer: outerR})
 
     defineArc = (slice, ring) ->
@@ -125,10 +121,8 @@ angular.module('app').directive 'appRadar', ['$log', '$timeout', ($log, $timeout
       index = node.ring + node.slice * numRings()
       arcs[index]
 
-    pi = Math.PI
-    degToRads = pi/180
 
-    arcTemplate = d3.svg.arc().innerRadius((d) -> d.innerRadius).outerRadius((d) -> d.outerRadius).startAngle((d) -> d.startAngle * degToRads).endAngle((d) -> d.endAngle * degToRads)
+    arcTemplate = d3.svg.arc().innerRadius((d) -> d.innerRadius).outerRadius((d) -> d.outerRadius).startAngle((d) -> d.startAngle * radarService.degToRads).endAngle((d) -> d.endAngle * radarService.degToRads)
 
     getArcPosition = (node) ->
       arcTemplate.centroid(getArc(node))
@@ -200,19 +194,11 @@ angular.module('app').directive 'appRadar', ['$log', '$timeout', ($log, $timeout
 
       ######arcSelection.exit().remove()
 
-      ### Theta in degrees ###
-      ### The +90 is to rotate the cartesian plane so the polar calculations match it ###
-      polarCoordinates = (o) ->
-        {r: Math.sqrt(Math.pow(o.x, 2) + Math.pow(o.y, 2)), theta: rectifyTheta(Math.atan2(o.y, o.x)*(1/degToRads) + 90)}
-
-      cartesianCoordinates = (o) ->
-        {x: o.r * Math.cos((o.theta - 90) * degToRads), y: o.r * Math.sin((o.theta - 90) * degToRads)}
-
       randomArcPoint = (arc) ->
         point = {}
         point.r = Math.random() * (arc.outerRadius - arc.innerRadius) + arc.innerRadius
         point.theta = Math.random() * (arc.endAngle - arc.startAngle) + arc.startAngle
-        cartesianCoordinates(point)
+        radarService.cartesianCoordinates(point)
 
       ### Done with arcs, on to nodes ###
       arcSelection = vis.selectAll("arc").data(arcs)
@@ -283,10 +269,6 @@ angular.module('app').directive 'appRadar', ['$log', '$timeout', ($log, $timeout
         o.last_r_dir = if Math.random() > .05 then 1 else -1
         o.last_theta_dir = if Math.random() > .05 then 1 else -1
 
-      rectifyTheta = (thetaDeg) ->
-        if isNaN(thetaDeg) then throw new Error("oops")
-        if thetaDeg >= 0 then thetaDeg % 360 else rectifyTheta(thetaDeg + 360)
-
       scaleContainerForce = (alpha) ->
         containerForce() * alpha
 
@@ -306,30 +288,19 @@ angular.module('app').directive 'appRadar', ['$log', '$timeout', ($log, $timeout
           nodeArc = getArc(o)
 
           q = 10
-          containerAngularPadding = containerPadding * q * degToRads
-          ### 1. find x, y in polar coordinates: r, theta ###
-          polar = polarCoordinates(o)
+          containerAngularPadding = containerPadding * q * radarService.degToRads
+          polar = radarService.polarCoordinates(o)
           [o.r, o.theta] = [polar.r, polar.theta]
 
-          ### 2. generate o.r += and o.theta += ###
           d_r =
             if o.r < (nodeArc.innerRadius + containerPadding) then Math.max(k_r, min_k_r)
             else if (nodeArc.outerRadius - containerPadding) < o.r then -Math.max(k_r, min_k_r)
             else if (o.r - (0.5 * (nodeArc.innerRadius + nodeArc.outerRadius)) > 0) then 0 else 0
 
           d_thetaDirection = 0
-          smallestAngleBetween = (source, target) ->
-            return smallestAngleBetween(target, source)  if target < source
-            a = target - source
-            a = (a + 180) % 360 - 180
-            Math.abs(a)
 
-          ###rsl###
-          ### 240 - 10 ###
-          differenceWithStart = smallestAngleBetween(nodeArc.startAngle, o.theta)
-          ###  230 + 180 % 360 - 180 = 50-180 = -130 ###
-
-          differenceWithEnd = smallestAngleBetween(nodeArc.endAngle, o.theta)
+          differenceWithStart = radarService.smallestAngleBetween(nodeArc.startAngle, o.theta)
+          differenceWithEnd = radarService.smallestAngleBetween(nodeArc.endAngle, o.theta)
 
           if nodeArc.startAngle + containerAngularPadding <= o.theta && o.theta + containerAngularPadding <= nodeArc.endAngle
             d_thetaDirection = 0
@@ -339,15 +310,10 @@ angular.module('app').directive 'appRadar', ['$log', '$timeout', ($log, $timeout
 
           d_theta = d_thetaDirection * Math.max(k_theta, min_k_theta)
 
-          ######if(o.label == "last") then console.log(d_r + " " + o.r)
-
-          ######console.log("(dr, dtheta): ("+d_r+", "+d_theta/degToRads+")")
-          ### 3. translate into d.x += and d.y += ###
-          ######console.log("("+o.r+" + "+d_r+") * Math.cos(("+o.theta+" + "+d_theta+") * "+degToRads+")")
           o.r += d_r
           o.theta += d_theta
 
-          cartesian = cartesianCoordinates(o)
+          cartesian = radarService.cartesianCoordinates(o)
           [o.x, o.y] = [cartesian.x, cartesian.y]
 
         nodeEnterSelection
