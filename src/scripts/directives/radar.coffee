@@ -137,10 +137,23 @@ angular.module('app').directive 'appRadar', ['$log', '$timeout', ($log, $timeout
     layoutHeight = defineControl("Layout height", true, true, 0, 1200, 700)
     padding = defineControl("Node padding", true, false, 0, 15, 6)
 
-    forceGravity = defineControl("Gravity", false, false, 0, 1, 0, (g) -> force.gravity(g))
-    forceAlpha = defineControl("Alpha", false, false, 0, 3, 0.1, (a) -> force.alpha(a))
-    forceCharge = defineControl("Charge", false, false, -50, 50, -20, (c) -> force.charge(c))
-    forceFriction = defineControl("Friction", false, false, .9, 1, .95, (f) -> force.friction(f))
+    forceGravity = defineControl("Gravity", false, false, 0, 1, 0, (g) -> masterForce.gravity(g))
+    forceAlpha = defineControl("Alpha", false, false, 0, 3, 0.2, (a) -> masterForce.alpha(a))
+    forceCharge = defineControl("Charge", false, false, -50, 50, -2, (c) -> masterForce.charge(c))
+    forceFriction = defineControl("Friction", false, false, .8, 1, .90, (f) -> masterForce.friction(f))
+
+    forces = []
+
+    masterForce = {
+      gravity: (g) -> _.each(forces, (force) -> force.gravity(g)); this
+      alpha: (a) -> _.each(forces, (force) -> force.alpha(a)); this
+      charge: (c) -> _.each(forces, (force) -> force.charge(c)); this
+      friction: (f) -> _.each(forces, (force) -> force.friction(f)); this
+      resume: () ->  _.each(forces, (force) -> force.resume()); this
+      start: () ->  _.each(forces, (force) -> force.start()); this
+      apply: (func) ->  _.each(forces, (force) -> func(force)); this
+    }
+
 
     containerForce = defineControl("Container force", false, false, 0, 100, 50)
     minAlpha = defineControl("Minimum alpha", false, false, 0, 1, 0, (a) -> if forceAlpha() < a then forceAlpha(a))
@@ -160,7 +173,7 @@ angular.module('app').directive 'appRadar', ['$log', '$timeout', ($log, $timeout
       nodes.forEach (o, i) ->
         o.x += (Math.random() - .5) * 5
         o.y += (Math.random() - .5) * 5
-      force.resume()
+      masterForce.resume()
 
     drawRadar = ->
       radii = []
@@ -247,19 +260,23 @@ angular.module('app').directive 'appRadar', ['$log', '$timeout', ($log, $timeout
             x1 > nx2 or x2 < nx1 or y1 > ny2 or y2 < ny1
 
       ### TODO different force for each arc ###
-      force = d3.layout.force()
-        .nodes(nodes)
-        .links([])
-        .linkStrength(0)
-        .size([layoutWidth(), layoutHeight()])
+      launchForces = (arc) ->
+        forces.push(d3.layout.force()
+          .nodes(arc)
+          .links([])
+          .linkStrength(0)
+          .size([layoutWidth(), layoutHeight()]))
+      launchForces(ring) for ring, i_r in slice for slice, i_s in data
 
-      force
+      masterForce
         .gravity(forceGravity())
         .alpha(forceAlpha())
         .charge(forceCharge())
         .friction(forceFriction())
         .start()
-      nodeEnterSelection.call(force.drag)
+
+      masterForce.apply (force)->
+        nodeEnterSelection.call(force.drag)
 
       ### Initialize directionality tracking vars ###
       nodes.forEach (o) ->
@@ -298,7 +315,7 @@ angular.module('app').directive 'appRadar', ['$log', '$timeout', ($log, $timeout
           d_r =
             if o.r < (nodeArc.innerRadius + containerPadding) then Math.max(k_r, min_k_r)
             else if (nodeArc.outerRadius - containerPadding) < o.r then -Math.max(k_r, min_k_r)
-            else 0
+            else if (o.r - (0.5 * (nodeArc.innerRadius + nodeArc.outerRadius)) > 0) then 0 else 0
 
           d_thetaDirection = 0
           smallestAngleBetween = (source, target) ->
@@ -340,14 +357,17 @@ angular.module('app').directive 'appRadar', ['$log', '$timeout', ($log, $timeout
         ).attr "cy", (d) ->
           d.y
       lastAlpha = undefined
-      force.on "tick",(e) ->
-        lastAlpha = ->
-          e.alpha
-        force.stop()
-        $timeout( ->
-          force.alpha(lastAlpha())
-          runSimulationStep(e)
-          ### TODO can you get the max of simulationSpeed() ? ###
-        , slowMo())
+      masterForce.apply (force)->
+        force.on "tick",(e) ->
+          lastAlpha = ->
+            e.alpha
+          force.stop()
+          $timeout( ->
+            force.alpha(lastAlpha())
+            runSimulationStep(e)
+            ### TODO can you get the max of simulationSpeed() ? ###
+          , slowMo())
+
+    ### Kick it all off ###
     drawRadar()
 ]
