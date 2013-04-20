@@ -1,5 +1,6 @@
-directiveWrapper.template<div id="techRadar" class="container">
-    <div class="row">
+<p>The tech radar shown below is from <a href="http://thoughtworks.fileburst.com/assets/technology-radar-october-2012.pdf">ThoughtWorks</a></p>
+<div id="techRadar" class="container">
+    <div class="row" ng-show="devMode">
         <div class="span6">
             <div ng-repeat="control in controls | filter: { initParam: 'false' }" >
                 {{control.name}}:

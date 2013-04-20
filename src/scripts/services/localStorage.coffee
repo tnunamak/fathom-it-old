@@ -1,0 +1,1 @@
+angular.module('app').value('localStorage', window.localStorage)
