@@ -140,7 +140,7 @@ angular.module('app').directive 'appRadar', ['$log', '$timeout', ($log, $timeout
     forceGravity = defineControl("Gravity", false, false, 0, 1, 0, (g) -> masterForce.gravity(g))
     forceAlpha = defineControl("Alpha", false, false, 0, 3, 0.2, (a) -> masterForce.alpha(a))
     forceCharge = defineControl("Charge", false, false, -50, 50, -2, (c) -> masterForce.charge(c))
-    forceFriction = defineControl("Friction", false, false, .8, 1, .90, (f) -> masterForce.friction(f))
+    forceFriction = defineControl("Friction", false, false, .8, 1, .89, (f) -> masterForce.friction(f))
 
     forces = []
 
